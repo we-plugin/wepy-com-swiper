@@ -1,0 +1,400 @@
+<template>
+  <view class="we-container {{directionClass}}">
+    <view class="we-wrapper"
+      @touchstart="touchstart"
+      @touchmove="touchmove"
+      @touchend="touchend"
+      animation="{{animationData}}">
+      <slot></slot>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+
+const device = wx.getSystemInfoSync()  //  获取设备信息
+const DEFAULT = {
+  /**
+   * 必填项
+   */
+  slideLength: 0,                       //  由于目前无法直接获取slide页数，目前只能通过参数写入
+  /**
+   * 可选参数
+   */
+  width: device.windowWidth,
+  height: device.windowHeight,
+  direction: 'horizontal',
+  initialSlide: 0,
+  speed: 300,
+  timingFunction: 'ease',               //  过渡动画速度曲线
+  autoplay: 0,                          //  自动播放间隔，设置为0时不自动播放
+  directionViewName: 'directionClass',   //  对应视图中direction类名
+  animationViewName: 'animationData',   //  对应视图中animation属性名
+  /**
+   * 事件回调
+   * @type {[type]}
+   */
+  onInit: null,                         //  swiper初始化时执行
+  onTouchStart: null,                   //  手指碰触slide时执行
+  onTouchMove: null,                    //  手指碰触slide并且滑动时执行
+  onTouchEnd: null,                     //  手指离开slide时执行
+  onSlideChangeStart: null,             //  slide达到过渡条件时执行
+  onSlideChangeEnd: null,               //  swiper从一个slide过渡到另一个slide结束时执行
+  onTransitionStart: null,              //  过渡时触发
+  onTransitionEnd: null,                //  过渡结束时执行
+  onSlideMove: null,                    //  手指触碰swiper并且拖动slide时执行
+  onSlideNextStart: null,               //  slide达到过渡条件 且规定了方向 向前（右、下）切换时执行
+  onSlideNextEnd: null,                 //  slide达到过渡条件 且规定了方向 向前（右、下）切换结束时执行
+  onSlidePrevStart: null,               //  slide达到过渡条件 且规定了方向 向前（左、上）切换时执行
+  onSlidePrevEnd: null                  //  slide达到过渡条件 且规定了方向 向前（左、上）切换结束时执行
+}
+
+export default class weSwiper extends wepy.component {
+  data = {
+    directionClass: 'we-container-horizontal',
+    animationData: null
+  }
+
+  props = {
+    option: Object
+  }
+
+  methods = {
+    touchstart (e) {
+      const { onTouchStart, XORY, activeIndex, rectDistance } = this
+      const touch = e.changedTouches[0]
+      const distance = touch[`client${XORY}`]
+      const translate =  - activeIndex * rectDistance
+
+      this[`touchStart${XORY}`] = distance
+      this[`translate${XORY}`] = translate
+      this.touchStartTime = new Date().getTime()
+
+      typeof onTouchStart === 'function' && onTouchStart(this, e) //  当手指碰触到slide时执行
+
+      this.slideAnimation(translate, 0)
+    },
+
+    touchmove (e) {
+      const { onTouchMove, XORY, onSlideMove } = this
+      const touch = e.changedTouches[0]
+      const distance = touch[`client${XORY}`]
+      const tmpMove = this[`translate${XORY}`] + distance - this[`touchStart${XORY}`]
+
+      typeof onTouchMove === 'function' && onTouchMove(this, e) //  手指碰触slide并且滑动时执行
+
+      this.slideAnimation(tmpMove, 0)
+
+      typeof onSlideMove === 'function' && onSlideMove(this)
+    },
+
+    touchend (e) {
+      const { onTouchEnd, XORY, speed, touchStartTime, rectDistance } = this
+      const touch = e.changedTouches[0]
+      const distance = touch[`client${XORY}`]
+      const touchEndTime = new Date().getTime()
+
+      const action = this.action(touchStartTime, touchEndTime, this[`touchStart${XORY}`], distance, rectDistance)
+
+      typeof onTouchEnd === 'function' && onTouchEnd(this, e) //  手指离开slide时执行
+
+      this[action](true, speed)
+    }
+  }
+
+  events = {}
+
+  /**
+   * 切换控制器
+   * @param touchStartTime： 手指触碰slide时的时间戳
+   * @param et： 手指离开slide时的时间戳
+   * @param from： 手指触碰slide时的屏幕位置
+   * @param to： 手指离开slide时的屏幕位置
+   * @param wrapperDistance： slide滑动方向上的容器长度
+   * @returns {*}
+   */
+  action (touchStartTime, touchEndTime, from, to, wrapperDistance) {
+    const {
+      activeIndex,
+      slideLength,
+      onTransitionStart } = this
+    const deltaTime = touchEndTime - touchStartTime  //  手指触摸时长
+    const distance = Math.abs(to - from)  //  滑动距离
+
+    const k = distance / deltaTime
+
+    if (to > from) {
+      typeof onTransitionStart === 'function' && onTransitionStart(self)  // slide达到过渡条件时执行
+      return (k > 0.3 || distance > wrapperDistance / 2) ? (activeIndex === 0 ? 'slideBack' : 'slidePrev') : 'slideBack'
+    }
+
+    if (to < from) {
+      typeof onTransitionStart === 'function' && onTransitionStart(self)  // slide达到过渡条件时执行
+      return (k > 0.3 || distance > wrapperDistance / 2) ? (activeIndex === slideLength - 1 ? 'slideBack' : 'slideNext') : 'slideBack'
+    }
+
+    if (to = from) {
+      return 'slideBack'
+    }
+  }
+
+
+  /**
+   * 切换至下一个slide
+   * @param runCallbacks： 可选，boolean，设置为false时不会触发onSlideChange回调函数
+   * @param speed: 可选，num(单位ms)，切换速度
+   */
+  slideNext (runCallbacks = false, speed = 300) {
+    const self = this
+    const {
+      onSlideNextStart,
+      onSlideNextEnd
+    } = self
+
+    typeof onSlideNextStart === 'function' && onSlideNextStart(self)  // slide达到过渡条件时执行
+
+    self.slideTo(self.activeIndex + 1, speed, runCallbacks)
+
+    typeof onSlideNextEnd === 'function' && setTimeout(() => { onSlideNextEnd(self) }, speed)  //  slide过渡结束后执行
+  }
+
+  /**
+   * 切换至上一个slide
+   * @param runCallbacks： 可选，boolean，设置为false时不会触发onSlideChange回调函数
+   * @param speed: 可选，num(单位ms)，切换速度
+   */
+  slidePrev (runCallbacks = false, speed = 300) {
+    const self = this
+    const {
+      onSlidePrevStart,
+      onSlidePrevEnd
+    } = self
+
+    typeof onSlidePrevStart === 'function' && onSlidePrevStart(self)  // slide达到过渡条件时执行
+
+    self.slideTo(self.activeIndex - 1, speed, runCallbacks)
+
+    typeof onSlidePrevEnd === 'function' && setTimeout(() => { onSlidePrevEnd(self) }, speed)  //  slide过渡结束后执行
+  }
+
+  /**
+   * 回弹
+   * @param runCallbacks: 可选，boolean，设置为false时不会触发onSlideChange回调函数
+   * @param speed: 可选，num(单位ms)，切换速度
+   */
+  slideBack (runCallbacks = false, speed = 300) {
+    const self = this
+    const {
+      XORY,
+      activeIndex,
+      rectDistance,
+      onTransitionEnd
+    } = self
+
+    const translate = - activeIndex * rectDistance
+
+    self.slideAnimation(translate, speed)
+
+    typeof onTransitionEnd === 'function' && setTimeout(() => { onTransitionEnd(self) }, speed)  //  slide过渡结束后执行
+  }
+
+  /**
+   * 切换到指定slide
+   * @param index：必选，num，指定将要切换到的slide的索引
+   * @param speed：可选，num(单位ms)，切换速度
+   * @param runCallbacks：可选，boolean，设置为false时不会触发onSlideChange回调函数
+   */
+  slideTo (index, speed = 300, runCallbacks = false) {
+    const self = this
+    const {
+      slideLength,
+      activeIndex,
+      rectDistance,
+      onSlideChangeStart,
+      onSlideChangeEnd,
+      onTransitionEnd,
+      consoleException
+    } = self
+
+    try {
+      if (typeof  index !== 'number') throw 'paramType' //  参数类型错误
+      if (index < 0 || index > slideLength - 1) throw 'bound'   //  越界
+
+      const translate = - index * rectDistance
+      self.previousIndex = activeIndex
+      self.activeIndex = index
+      self.isBeginning = self.activeIndex === self.initialSlide
+      self.isEnd = self.activeIndex === self.slideLength - 1
+
+      runCallbacks && typeof onSlideChangeStart === 'function' && onSlideChangeStart(self)  // slide达到过渡条件时执行
+
+      self.slideAnimation(translate, speed)
+
+      runCallbacks &&  typeof onSlideChangeEnd === 'function' && setTimeout(() => { onSlideChangeEnd(self) }, speed)  //  swiper从一个slide过渡到另一个slide结束后执行
+      typeof onTransitionEnd === 'function' && setTimeout(() => { onTransitionEnd(self) }, speed)  //  slide过渡结束后执行
+    } catch (err) {
+      consoleException(err, 'slideTo[Function]')
+    }
+  }
+
+  /**
+   * 平移动画
+   * @param translate：平移位置
+   * @param speed：过渡时长
+   * @param timingFunction：过渡类型
+   */
+  slideAnimation (translate = 0, speed = 300, timingFunction = 'ease') {
+    const REG = {
+      TRANSLATE: /^(0|[1-9][0-9]*|-[1-9][0-9]*)$/,
+      SPEED: /^(0|[1-9][0-9]*|-[1-9][0-9]*)$/,
+      TIMINGFUNCTION: /linear|ease|ease-in|ease-in-out|ease-out|step-start|step-end/
+    }
+
+    const { XORY, animationViewName, consoleException } = this
+    try {
+      /**
+       * 异常处理
+       */
+      if(!REG.TRANSLATE.test(translate)) throw 'paramType'
+      if(!REG.SPEED.test(speed)) throw 'paramType'
+      if(!REG.TIMINGFUNCTION.test(timingFunction)) throw 'paramType'
+      /**
+       * 创建一个动画实例
+       */
+      const animation = wx.createAnimation({
+        transformOrigin: '50% 50%',
+        duration: speed,
+        timingFunction,
+        delay: 0
+      })
+
+      animation[`translate${XORY}`](translate).step()  //  动画描述
+
+      this.syncView(animationViewName, animation)  //  同步动画到视图
+
+    } catch (err) {
+      consoleException(err, 'slideAnimation[Function]')
+    }
+  }
+
+  /**
+   * 同步设置到视图
+   * @param DEFAULT：默认参数
+   * @param param：构造参数
+   */
+  syncView (viewName, prop) {
+      this[`${viewName}`]= prop
+      this.$apply()
+  }
+
+  /**
+   * 错误对照
+   */
+  consoleException (type, place) {
+    const ERROR = {
+      'paramType': '参数类型错误',
+      'bound': '参数越界'
+    }
+    console.log(`%c${place}:${ERROR[type]}`, 'color: red')
+  }
+
+  /**
+   * 初始化配置
+   */
+  initSwiper (param) {
+    const {
+      speed,
+      initialSlide,
+      direction,
+      autoplay,
+      directionViewName
+    } = param
+
+    const directionClass = direction === 'horizontal' ? 'we-container-horizontal' : 'we-container-vertical'
+    this.syncView(directionViewName, directionClass)
+    this.rectDistance = direction === 'horizontal' ? this.width : this.height
+    this.XORY = direction === 'horizontal' ? 'X' : 'Y'
+    this.activeIndex = initialSlide  //  将初始页码赋给activeIndex
+    this.noSwiper = false  //  阻止手势滑动
+    this.previousIndex = initialSlide  //  返回上一个活动块的索引，切换前的索引
+    this.slideTo(initialSlide, 0)
+    typeof autoplay === 'number' && autoplay > 0 && setInterval(() => {
+      if (this.isEnd) {
+        this.slideTo(0, speed)
+      } else {
+        this.slideTo(this.activeIndex + 1, speed)
+      }
+    }, autoplay)
+    /**
+     * 处理callback
+     */
+    const { onInit } = this
+    typeof onInit === 'function' && onInit(this)
+  }
+
+  onLoad () {
+    const { option } = this
+    const CONFIG = Object.assign(this, DEFAULT , option)
+
+    this.initSwiper(CONFIG)
+  }
+}
+</script>
+
+<style lang="css">
+Page{
+    width: 100%;
+    height: 100%;
+}
+
+.we-container{
+    width: 100%;
+    height: 100%;
+}
+
+.we-container {
+    margin-left: auto;
+    margin-right: auto;
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.we-wrapper{
+    position: relative;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: -webkit-box;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-transition-property: -webkit-transform;
+    -moz-transition-property: -moz-transform;
+    -o-transition-property: -o-transform;
+    -ms-transition-property: -ms-transform;
+    transition-property: transform;
+    -webkit-box-sizing: content-box;
+    -moz-box-sizing: content-box;
+    box-sizing: content-box;
+}
+
+.we-container-vertical>.we-wrapper {
+    -webkit-box-orient: vertical;
+    -moz-box-orient: vertical;
+    -ms-flex-direction: column;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+}
+
+.we-slide {
+    -webkit-flex-shrink: 0;
+    -ms-flex: 0 0 auto;
+    flex-shrink: 0;
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+</style>

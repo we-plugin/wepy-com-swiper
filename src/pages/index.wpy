@@ -1,0 +1,137 @@
+<style lang="less">
+  .we-slide{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 2rem;
+  }
+
+  .we-slide:nth-child(1){
+    background-color: #4390EE
+  }
+  .we-slide:nth-child(2){
+    background-color: #CA4040
+  }
+  .we-slide:nth-child(3){
+    background-color: #FF8604
+  }
+</style>
+<template>
+  <view class="container">
+    <weSwiper :option="swiper">
+      <view class="we-slide">slide 1</view>
+      <view class="we-slide">slide 2</view>
+      <view class="we-slide">slide 3</view>
+    </weSwiper>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import weSwiper from '../components/swiper'
+
+  export default class Index extends wepy.page {
+    config = {
+      navigationBarTitleText: 'test'
+    }
+    components = {
+      weSwiper: weSwiper
+    }
+
+    data = {
+      swiper: {
+        direction: 'vertical',
+        slideLength: 3,
+        /**
+         * swiper初始化后执行
+         * @param swiper
+         */
+        onInit (weswiper) {
+
+        },
+        /**
+         * 手指碰触slide时执行
+         * @param swiper
+         * @param event
+         */
+        onTouchStart (weswiper, event) {
+
+        },
+        /**
+         * 手指碰触slide并且滑动时执行
+         * @param swiper
+         * @param event
+         */
+        onTouchMove (weswiper, event) {
+
+        },
+        /**
+         * 手指离开slide时执行
+         * @param swiper
+         * @param event
+         */
+        onTouchEnd (weswiper, event) {
+
+        },
+        /**
+         *  slide达到过渡条件时执行
+         */
+        onSlideChangeStart (weswiper) {
+
+        },
+        /**
+         *  swiper从一个slide过渡到另一个slide结束时执行
+         */
+        onSlideChangeEnd (weswiper) {
+
+        },
+        /**
+         *  过渡时触发
+         */
+        onTransitionStart (weswiper) {
+
+        },
+        /**
+         *  过渡结束时执行
+         */
+        onTransitionEnd (weswiper) {
+
+        },
+        /**
+         *  手指触碰swiper并且拖动slide时执行
+         */
+        onSlideMove (weswiper) {
+
+        },
+        /**
+         * slide达到过渡条件 且规定了方向 向前（右、下）切换时执行
+         */
+        onSlideNextStart (weswiper) {
+
+        },
+        /**
+         *  slide达到过渡条件 且规定了方向 向前（右、下）切换结束时执行
+         */
+        onSlideNextEnd (weswiper) {
+
+        },
+        /**
+         *  slide达到过渡条件 且规定了方向 向前（左、上）切换时执行
+         */
+        onSlidePrevStart (swiper) {
+
+        },
+        /**
+         *  slide达到过渡条件 且规定了方向 向前（左、上）切换结束时执行
+         */
+        onSlidePrevEnd (weswiper) {
+
+        }
+      }
+    }
+    onLoad() {
+      setTimeout(() =>this.$invoke('weSwiper', 'slideTo', 2), 3000)
+    }
+  }
+</script>
