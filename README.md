@@ -19,12 +19,9 @@
 #### 纵向滚动
 ![Alt text](https://github.com/dlhandsome/we-swiper/blob/master/screenshots/Gif_20170401_013701.gif?raw=true)
 
-## 使用方式
-#### 克隆项目至你的目录
+## 安装组件
 ```bash
-cd my-project
-
-git clone https://github.com/dlhandsome/wepy-swiper.git
+npm install wepy-com-swiper --save
 ```
 
 ## 示例
@@ -61,7 +58,7 @@ git clone https://github.com/dlhandsome/wepy-swiper.git
 
 <script>
   import wepy from 'wepy'
-  import weSwiper from '../components/swiper'
+  import weSwiper from 'wepy-com-swiper'
 
   export default class Index extends wepy.page {
     config = {
