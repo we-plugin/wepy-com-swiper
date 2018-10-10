@@ -251,6 +251,10 @@ export default class weSwiper extends wepy.component {
       TIMINGFUNCTION: /linear|ease|ease-in|ease-in-out|ease-out|step-start|step-end/
     }
 
+    if (typeof translate === 'number') {
+      translate = parseInt(translate)
+    }
+
     const { XORY, animationViewName, consoleException } = this
     try {
       /**
